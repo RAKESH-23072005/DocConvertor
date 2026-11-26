@@ -1,24 +1,33 @@
-export const API_BASE_URL: string =
-  import.meta.env.VITE_API_BASE_URL ??
-  (import.meta.env.DEV ? 'http://127.0.0.1:8000/api' : '/api');
+const rawConfiguredBaseUrl = (import.meta.env.VITE_API_BASE_URL ?? '').trim();
+
+function normalizeApiBaseUrl(rawBaseUrl: string): string {
+  const fallback = import.meta.env.DEV ? 'http://127.0.0.1:8000/api' : '/api';
+  const trimmed = (rawBaseUrl || fallback).replace(/\/+$/, '');
+  return trimmed.endsWith('/api') ? trimmed : `${trimmed}/api`;
+}
+
+export const API_BASE_URL: string = normalizeApiBaseUrl(rawConfiguredBaseUrl);
 
 export const REQUEST_TIMEOUT_MS = 125_000;
 
-export function resolveHealthCheckUrl(baseUrl: string = API_BASE_URL): string {
-  const normalizedBase = baseUrl.trim().replace(/\/+$/, '');
-  const rootBase = normalizedBase.endsWith('/api')
-    ? normalizedBase.slice(0, -4)
-    : normalizedBase;
-  return `${rootBase}/api/health`;
+export function buildApiUrl(endpointPath: string): string {
+  const normalizedPath = endpointPath.startsWith('/')
+    ? endpointPath
+    : `/${endpointPath}`;
+  const pathWithoutDuplicateApi = normalizedPath.startsWith('/api/')
+    ? normalizedPath.slice(4)
+    : normalizedPath === '/api'
+      ? ''
+      : normalizedPath;
+  return `${API_BASE_URL}${pathWithoutDuplicateApi}`;
 }
 
-export async function apiGet<T>(path: string, useRawUrl = false): Promise<T> {
+export async function apiGet<T>(path: string): Promise<T> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 15_000);
-  const requestUrl = useRawUrl ? path : `${API_BASE_URL}${path}`;
 
   try {
-    const response = await fetch(requestUrl, {
+    const response = await fetch(buildApiUrl(path), {
       method: 'GET',
       headers: { Accept: 'application/json' },
       signal: controller.signal,
@@ -53,7 +62,7 @@ export function uploadFileForBlob(
 ): Promise<UploadBlobResponse> {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
-    xhr.open('POST', `${API_BASE_URL}${endpointPath}`, true);
+    xhr.open('POST', buildApiUrl(endpointPath), true);
     xhr.responseType = 'blob';
     xhr.timeout = REQUEST_TIMEOUT_MS;
 
