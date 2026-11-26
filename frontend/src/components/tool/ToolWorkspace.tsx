@@ -35,6 +35,7 @@ import { BatchFileQueue } from './BatchFileQueue';
 import { CompressionSettings } from './CompressionSettings';
 import { ErrorMessage } from './ErrorMessage';
 import { FileUpload } from './FileUpload';
+import { ProcessingLoadingView } from './ProcessingLoadingView';
 import { ToolGuideSection } from './ToolGuideSection';
 
 interface ToolWorkspaceProps {
@@ -353,6 +354,19 @@ export function ToolWorkspace({ tool }: ToolWorkspaceProps) {
       </p>
     </div>
   );
+
+  if (isBatchRunning) {
+    return (
+      <ProcessingLoadingView
+        tool={tool}
+        items={items}
+        overallProgress={overallProgress}
+        completedCount={completedCount}
+        failedCount={failedCount}
+        onCancel={() => abortControllerRef.current?.abort()}
+      />
+    );
+  }
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
