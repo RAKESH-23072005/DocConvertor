@@ -10,6 +10,7 @@ import { HomePage } from './pages/HomePage';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { PdfToWordPage } from './pages/PdfToWordPage';
 import { PrivacyPolicyPage } from './pages/PrivacyPolicyPage';
+import { ProcessingPage } from './pages/ProcessingPage';
 import { TermsPage } from './pages/TermsPage';
 import { WordToPdfPage } from './pages/WordToPdfPage';
 
@@ -22,20 +23,36 @@ export function App() {
             <Route path="/" element={<HomePage />} />
             <Route path="/pdf-to-word" element={<PdfToWordPage />} />
             <Route
+              path="/pdf-to-word/processing"
+              element={<ProcessingPage toolId="pdf-to-word" />}
+            />
+            <Route
               path="/pdf-to-word/download"
               element={<DownloadPage toolId="pdf-to-word" />}
             />
             <Route path="/word-to-pdf" element={<WordToPdfPage />} />
+            <Route
+              path="/word-to-pdf/processing"
+              element={<ProcessingPage toolId="word-to-pdf" />}
+            />
             <Route
               path="/word-to-pdf/download"
               element={<DownloadPage toolId="word-to-pdf" />}
             />
             <Route path="/compress-pdf" element={<CompressPdfPage />} />
             <Route
+              path="/compress-pdf/processing"
+              element={<ProcessingPage toolId="compress-pdf" />}
+            />
+            <Route
               path="/compress-pdf/download"
               element={<DownloadPage toolId="compress-pdf" />}
             />
             <Route path="/compress-image" element={<CompressImagePage />} />
+            <Route
+              path="/compress-image/processing"
+              element={<ProcessingPage toolId="compress-image" />}
+            />
             <Route
               path="/compress-image/download"
               element={<DownloadPage toolId="compress-image" />}

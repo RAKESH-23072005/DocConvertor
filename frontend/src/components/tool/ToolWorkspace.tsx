@@ -15,10 +15,6 @@ import {
   useBatchResult,
 } from '../../context/BatchResultContext';
 import { useDocumentMeta } from '../../hooks/useDocumentMeta';
-import { runRealCompressPdfBatch } from '../../services/compressPdfService';
-import { runBrowserImageBatch } from '../../services/imageCompressionService';
-import { runRealPdfToWordBatch } from '../../services/pdfToWordService';
-import { runRealWordToPdfBatch } from '../../services/wordToPdfService';
 import type {
   BatchFileItem,
   PdfCompressionLevel,
@@ -35,7 +31,6 @@ import { BatchFileQueue } from './BatchFileQueue';
 import { CompressionSettings } from './CompressionSettings';
 import { ErrorMessage } from './ErrorMessage';
 import { FileUpload } from './FileUpload';
-import { ProcessingLoadingView } from './ProcessingLoadingView';
 import { ToolGuideSection } from './ToolGuideSection';
 
 interface ToolWorkspaceProps {
@@ -69,24 +64,33 @@ export function ToolWorkspace({ tool }: ToolWorkspaceProps) {
   });
 
   const navigate = useNavigate();
-  const { setSession } = useBatchResult();
-  const [items, setItems] = useState<BatchFileItem[]>([]);
+  const { session, batchStatus, startBatchProcessing } = useBatchResult();
+  const [items, setItems] = useState<BatchFileItem[]>(() =>
+    batchStatus === 'cancelled' &&
+    session?.toolId === tool.id &&
+    session.items.some((item) => item.status === 'waiting')
+      ? session.items
+      : [],
+  );
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [downloadNotice, setDownloadNotice] = useState<string | null>(null);
-  const [pdfLevel, setPdfLevel] = useState<PdfCompressionLevel>('recommended');
-  const [imageQuality, setImageQuality] = useState<number>(75);
-  const [isBatchRunning, setIsBatchRunning] = useState<boolean>(false);
+  const [pdfLevel, setPdfLevel] = useState<PdfCompressionLevel>(
+    session?.toolId === tool.id ? session.pdfLevel : 'recommended',
+  );
+  const [imageQuality, setImageQuality] = useState<number>(
+    session?.toolId === tool.id ? session.imageQuality : 75,
+  );
+  const isBatchRunning =
+    batchStatus === 'running' && session?.toolId === tool.id;
   const [selectedPreviewId, setSelectedPreviewId] = useState<string | null>(
     null,
   );
-  const abortControllerRef = useRef<AbortController | null>(null);
   const itemsRef = useRef<BatchFileItem[]>([]);
   const handedOffRef = useRef<boolean>(false);
   itemsRef.current = items;
 
   useEffect(() => {
     return () => {
-      abortControllerRef.current?.abort();
       if (!handedOffRef.current) {
         itemsRef.current.forEach(revokeBatchItemUrls);
       }
@@ -197,73 +201,20 @@ export function ToolWorkspace({ tool }: ToolWorkspaceProps) {
     setDownloadNotice(null);
   }
 
-  async function executeBatch(targetItems: BatchFileItem[]) {
+  function executeBatch(targetItems: BatchFileItem[]) {
     const waiting = targetItems.filter((item) => item.status === 'waiting');
     if (isBatchRunning || waiting.length === 0) return;
 
     setErrorMessage(null);
     setDownloadNotice(null);
-    setIsBatchRunning(true);
-
-    const controller = new AbortController();
-    abortControllerRef.current = controller;
-
-    let latestItems = targetItems;
-    const onItemUpdate = (
-      id: string,
-      patch: Partial<
-        Pick<BatchFileItem, 'status' | 'progress' | 'error' | 'result'>
-      >,
-    ) => {
-      latestItems = latestItems.map((item) =>
-        item.id === id ? { ...item, ...patch } : item,
-      );
-      setItems(latestItems);
-    };
-
-    try {
-      if (tool.id === 'pdf-to-word') {
-        await runRealPdfToWordBatch({
-          items: targetItems,
-          signal: controller.signal,
-          onItemUpdate,
-        });
-      } else if (tool.id === 'word-to-pdf') {
-        await runRealWordToPdfBatch({
-          items: targetItems,
-          signal: controller.signal,
-          onItemUpdate,
-        });
-      } else if (tool.id === 'compress-pdf') {
-        await runRealCompressPdfBatch({
-          items: targetItems,
-          level: pdfLevel,
-          signal: controller.signal,
-          onItemUpdate,
-        });
-      } else {
-        await runBrowserImageBatch({
-          items: targetItems,
-          quality: imageQuality,
-          signal: controller.signal,
-          onItemUpdate,
-        });
-      }
-
-      if (!controller.signal.aborted) {
-        handedOffRef.current = true;
-        setSession({
-          toolId: tool.id,
-          items: latestItems,
-          pdfLevel,
-          imageQuality,
-          createdAt: Date.now(),
-        });
-        navigate(`${tool.route}/download`);
-      }
-    } finally {
-      setIsBatchRunning(false);
-    }
+    handedOffRef.current = true;
+    startBatchProcessing({
+      toolId: tool.id,
+      items: targetItems,
+      pdfLevel,
+      imageQuality,
+    });
+    navigate(`${tool.route}/processing`);
   }
 
   function handleRetryItem(id: string) {
@@ -354,19 +305,6 @@ export function ToolWorkspace({ tool }: ToolWorkspaceProps) {
       </p>
     </div>
   );
-
-  if (isBatchRunning) {
-    return (
-      <ProcessingLoadingView
-        tool={tool}
-        items={items}
-        overallProgress={overallProgress}
-        completedCount={completedCount}
-        failedCount={failedCount}
-        onCancel={() => abortControllerRef.current?.abort()}
-      />
-    );
-  }
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
