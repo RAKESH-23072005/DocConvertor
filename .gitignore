@@ -1,0 +1,28 @@
+# Dependencies & environments
+node_modules/
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# Environment files & secrets
+.env
+.env.*
+!.env.example
+!.env.production.example
+backend/.env
+backend/.env.*
+!backend/.env.example
+!backend/.env.production.example
+frontend/.env
+frontend/.env.*
+!frontend/.env.example
+
+# Build outputs & temporary directories
+frontend/dist/
+backend/tmp/
+tmp/
+
+# OS artifacts
+.DS_Store
+Thumbs.db

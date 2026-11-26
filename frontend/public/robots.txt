@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Disallow: /pdf-to-word/download
+Disallow: /word-to-pdf/download
+Disallow: /compress-pdf/download
+Disallow: /compress-image/download
+
+Sitemap: https://docconvertor.example/sitemap.xml
