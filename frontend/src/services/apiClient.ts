@@ -4,12 +4,21 @@ export const API_BASE_URL: string =
 
 export const REQUEST_TIMEOUT_MS = 125_000;
 
-export async function apiGet<T>(path: string): Promise<T> {
+export function resolveHealthCheckUrl(baseUrl: string = API_BASE_URL): string {
+  const normalizedBase = baseUrl.trim().replace(/\/+$/, '');
+  const rootBase = normalizedBase.endsWith('/api')
+    ? normalizedBase.slice(0, -4)
+    : normalizedBase;
+  return `${rootBase}/api/health`;
+}
+
+export async function apiGet<T>(path: string, useRawUrl = false): Promise<T> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 15_000);
+  const requestUrl = useRawUrl ? path : `${API_BASE_URL}${path}`;
 
   try {
-    const response = await fetch(`${API_BASE_URL}${path}`, {
+    const response = await fetch(requestUrl, {
       method: 'GET',
       headers: { Accept: 'application/json' },
       signal: controller.signal,
